@@ -1,2 +1,2 @@
 #!/bin/bash
-./premake/premake5 gmake
+./premake/premake5 --file=premake/Test.lua gmake
