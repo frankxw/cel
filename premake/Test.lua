@@ -5,9 +5,10 @@ workspace "Tests"
 project "TestMain"
    kind "ConsoleApp"
    language "C++"
-   targetdir "bin/%{cfg.buildcfg}"
+   targetdir "../bin/%{cfg.buildcfg}"
 
    files { "../test/**.h", "../test/**.cpp" }
+   includedirs { "../src" }
 
    filter "configurations:Debug"
       defines { "DEBUG" }
