@@ -1,3 +1,7 @@
+# Output
+/build
+/bin
+
 # Prerequisites
 *.d
 
@@ -30,3 +34,6 @@
 *.exe
 *.out
 *.app
+
+# General stuff
+*.DS_Store
