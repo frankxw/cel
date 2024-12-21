@@ -64,7 +64,7 @@ void TimeKeeper::RemoveTimer(int key)
 
 int TimeKeeper::GenerateTimerId()
 {
-    const int key = m_timers.size();
+    int key = m_timers.size();
 
     bool passedZero = false;
     while(true) {

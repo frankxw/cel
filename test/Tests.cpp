@@ -19,30 +19,30 @@ class ApiServer : public cel::Server
 public:
     ApiServer(int port, int backlog) : cel::Server(port, backlog) {};
 
-    void ClientConnected(uv_tcp_t* client) override
+    void ClientConnected(uv_tcp_t* uvClient) override
     {
-        if(!client) {
+        if(!uvClient) {
             return;
         }
 
-        if(m_clients.find(client) != m_clients.end()) {
+        if(m_clients.find(uvClient) != m_clients.end()) {
             return;
         }
 
         cel::client_info info;
-        if(!cel::getClientInfo(client, info)) {
+        if(!cel::getClientInfo(uvClient, info)) {
             fprintf(stderr, "ClientConnected: Failed to get client info\n");
             return;
         }
 
         printf("Client connected: %s:%d\n", info.ip, info.port);
 
-        m_clients.emplace(client, Client(info));
+        m_clients.emplace(uvClient, Client(info));
     }
 
-    void ClientDisconnected(uv_tcp_t* client) override
+    void ClientDisconnected(uv_tcp_t* uvClient) override
     {
-        auto it = m_clients.find(client);
+        auto it = m_clients.find(uvClient);
         if(it == m_clients.end()) {
             return;
         }
@@ -54,9 +54,9 @@ public:
         m_clients.erase(it);
     }
 
-    void ClientMessage(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) override
+    void ClientMessage(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf) override
     {
-        auto it = m_clients.find((uv_tcp_t*) client);
+        auto it = m_clients.find((uv_tcp_t*) uvClient);
         if(it == m_clients.end()) {
             return;
         }
@@ -67,7 +67,7 @@ public:
         printf("Incoming message from %s:%d...\n", info.ip, info.port);
         uv_buf_t wrbuf = uv_buf_init(buf->base, nread);
         printf("Echo: %s\n", wrbuf.base);
-        SendMessage(client, &wrbuf);
+        SendMessage(uvClient, &wrbuf);
     }
 
 private:

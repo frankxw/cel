@@ -44,7 +44,7 @@ void Server::Start(uv_loop_t* loop)
     }
 }
 
-bool getClientInfo(uv_tcp_t* client, client_info& info)
+bool cel::getClientInfo(uv_tcp_t* client, client_info& info)
 {
     if(!client) {
         fprintf(stderr, "getClientInfo: passed in null client\n");
@@ -52,7 +52,7 @@ bool getClientInfo(uv_tcp_t* client, client_info& info)
     }
 
     struct sockaddr_storage addr;
-    const int nameLen = sizeof addr;
+    int nameLen = sizeof addr;
 
     const int getInfo = uv_tcp_getpeername(client, (struct sockaddr *)&addr, &nameLen);
     if(getInfo < 0) {

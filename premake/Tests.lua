@@ -7,9 +7,9 @@ project "TestMain"
    language "C++"
    targetdir "../bin/%{cfg.buildcfg}"
 
-   files { "../test/**.h", "../test/**.cpp" }
+   files { "../test/**.h", "../test/**.cpp", "../src/**.h", "../src/**.cpp" }
    includedirs { "../src", "../dep/libuv/include" }
-   links { "libuv" }
+   links { "uv" }
    libdirs { "../dep/libuv/build" }
 
    filter "configurations:Debug"
