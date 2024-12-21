@@ -1,1 +1,1 @@
-Start ""  ".\premake\premake5.exe" --file=premake\Tests.lua vs2022
+Start ""  ".\premake\premake5.exe" --file=premake\cel.lua vs2022

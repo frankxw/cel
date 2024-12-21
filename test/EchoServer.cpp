@@ -14,10 +14,10 @@ private:
     cel::client_info clientInfo;
 };
 
-class ApiServer : public cel::Server
+class EchoServer : public cel::Server
 {
 public:
-    ApiServer(int port, int backlog) : cel::Server(port, backlog) {};
+    EchoServer(int port, int backlog) : cel::Server(port, backlog) {};
 
     void ClientConnected(uv_tcp_t* uvClient) override
     {
@@ -78,7 +78,7 @@ int main()
 {
     cel::App& app = cel::App::GetInstance();
 
-    ApiServer server(8070, 128);
+    EchoServer server(8070, 128);
     app.SetServer(&server);
 
     app.Run();
