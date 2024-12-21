@@ -9,7 +9,6 @@ project "TestMain"
 
    files { "../test/**.h", "../test/**.cpp", "../src/**.h", "../src/**.cpp" }
    includedirs { "../src", "../dep/libuv/include" }
-   links { "uv" }
    libdirs { "../dep/libuv/build" }
 
    filter "configurations:Debug"
@@ -20,5 +19,12 @@ project "TestMain"
       defines { "NDEBUG" }
       optimize "On"
 
-   filter { "system:not windows", "action:gmake" }
+   -- -Bstatic doesn't work on mac :(
+   filter { "system:macosx" }
+      linkoptions { "../dep/libuv/build/libuv.a" }
+
+   filter { "system:unix" }
+      links { "uv:static" }
+
+   filter { "system:not Windows", "action:gmake" }
       buildoptions { "-std=c++17"}
