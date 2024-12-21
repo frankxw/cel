@@ -8,12 +8,12 @@ A partial C++ wrapper for [libuv](https://libuv.org/) for building servers.
 Once the repo is checked out, make sure to setup the dpendencies:
 ### libuv
 - Navigate to the root directory
-- git submodule init
-- git submodule update
-- cd libuv
-- ./autogen.sh
-- ./configure
-- make
+- `git submodule init`
+- `git submodule update`
+- `cd dep/libuv`
+- `./autogen.sh`
+- `./configure`
+- `make`
 
 # Building
 The projects can be generated with premake.
