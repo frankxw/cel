@@ -6,14 +6,19 @@ A partial C++ wrapper for [libuv](https://libuv.org/) for building servers.
 
 # Setup
 Once the repo is checked out, make sure to setup the dpendencies:
-### libuv
 - Navigate to the root directory
 - `git submodule init`
 - `git submodule update`
+## libuv
+Follow the instructions on the [github repo](https://github.com/libuv/libuv).
+### Mac / Linux
+Using [cmake](https://cmake.org/), do the following:
 - `cd dep/libuv`
-- `./autogen.sh`
-- `./configure`
-- `make`
+- `mkdir -p build`
+- `cd build`
+- `cmake ..`
+- `cd ..`
+- `cmake --build build`
 
 # Building
 The projects can be generated with premake.

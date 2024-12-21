@@ -8,7 +8,9 @@ project "TestMain"
    targetdir "../bin/%{cfg.buildcfg}"
 
    files { "../test/**.h", "../test/**.cpp" }
-   includedirs { "../src" }
+   includedirs { "../src", "../dep/libuv/include" }
+   links { "libuv" }
+   libdirs { "../dep/libuv/build" }
 
    filter "configurations:Debug"
       defines { "DEBUG" }
@@ -17,3 +19,6 @@ project "TestMain"
    filter "configurations:Release"
       defines { "NDEBUG" }
       optimize "On"
+
+   filter { "system:not windows", "action:gmake" }
+      buildoptions { "-std=c++17"}
