@@ -32,7 +32,7 @@ project "EchoTest"
    targetdir "../bin/%{cfg.buildcfg}"
 
    files { "../test/EchoServer.cpp" }
-   includedirs { "../src" }
+   includedirs { "../src", "../dep/libuv/include" }
    links { "cel" }
 
    -- -Bstatic doesn't work on mac :(
