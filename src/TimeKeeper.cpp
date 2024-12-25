@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "App.h"
+#include "Logging.h"
 #include "TimeKeeper.h"
 #include "TimerCallback.h"
 
@@ -40,7 +41,7 @@ int TimeKeeper::CreateTimer(uint64_t timeout, uint64_t repeat, TimerCallback* ca
 
     auto elt = m_timers.find(key);
     if(elt == m_timers.end()) {
-        fprintf(stderr, "Failed to insert timer.\n");
+        LogErr(LogLevel::Normal, "Failed to insert timer.\n");
         return 0;
     }
 
@@ -71,7 +72,7 @@ int TimeKeeper::GenerateTimerId()
         key++;
         if(key == 0) {
             if(passedZero) {
-                fprintf(stderr, "Ran out of timer ids.\n");
+                LogErr(LogLevel::Normal, "Ran out of timer ids.\n");
                 return 0;
             }
             else {

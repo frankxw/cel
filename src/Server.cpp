@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "App.h"
+#include "Logging.h"
 #include "Server.h"
 
 using namespace cel;
@@ -39,7 +40,7 @@ void Server::Start(uv_loop_t* loop)
     uv_tcp_bind(&m_uvServer, (const struct sockaddr*)&addr, 0);
     const int r = uv_listen((uv_stream_t*) &m_uvServer, m_backlog, onNewConnection);
     if(r) {
-        fprintf(stderr, "Listen error %s\n", uv_strerror(r));
+        LogErr(LogLevel::Normal, "Listen error %s\n", uv_strerror(r));
         return;
     }
 }
@@ -47,7 +48,7 @@ void Server::Start(uv_loop_t* loop)
 bool cel::getClientInfo(uv_tcp_t* client, client_info& info)
 {
     if(!client) {
-        fprintf(stderr, "getClientInfo: passed in null client\n");
+        LogErr(LogLevel::Normal, "getClientInfo: passed in null client\n");
         return false;
     }
 
@@ -56,7 +57,7 @@ bool cel::getClientInfo(uv_tcp_t* client, client_info& info)
 
     const int getInfo = uv_tcp_getpeername(client, (struct sockaddr *)&addr, &nameLen);
     if(getInfo < 0) {
-        fprintf(stderr, "Get client info error %s\n", uv_err_name(getInfo));
+        LogErr(LogLevel::Normal, "Get client info error %s\n", uv_err_name(getInfo));
         return false;
     }
 
@@ -83,7 +84,7 @@ void allocBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
 void onWrite(uv_write_t* req, int status)
 {
     if(status) {
-        fprintf(stderr, "Write error %s\n", uv_strerror(status));
+        LogErr(LogLevel::Normal, "Write error %s\n", uv_strerror(status));
     }
     free(req);
 }
@@ -92,14 +93,14 @@ void onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 {
     Server* server = static_cast<Server*>(client->data);
     if(!server) {
-        fprintf(stderr, "onRead error: Missing Server context (client->data)\n");
+        LogErr(LogLevel::Normal, "onRead error: Missing Server context (client->data)\n");
         // TODO: free buf->base?
         return;
     }
 
     if(nread < 0) {
         if(nread != UV_EOF) {
-            fprintf(stderr, "onRead error: %s\n", uv_err_name(nread));
+            LogErr(LogLevel::Normal, "onRead error: %s\n", uv_err_name(nread));
         }
 
         server->ClientDisconnected((uv_tcp_t*) client);
@@ -117,14 +118,14 @@ void onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 void onNewConnection(uv_stream_t* server, int status)
 {
     if(status < 0) {
-        fprintf(stderr, "New connection error %s\n", uv_strerror(status));
+        LogErr(LogLevel::Normal, "New connection error %s\n", uv_strerror(status));
         return;
     }
 
     App& app = App::GetInstance();
     Server* appServer = static_cast<Server*>(server->data);
     if(!appServer) {
-        fprintf(stderr, "onNewConnection error: Missing Server context (server->data)\n");
+        LogErr(LogLevel::Normal, "onNewConnection error: Missing Server context (server->data)\n");
         return;
     }
 

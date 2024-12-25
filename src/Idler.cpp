@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "Idler.h"
+#include "Logging.h"
 
 using namespace cel;
 
@@ -21,7 +22,7 @@ void idlerHook(uv_idle_t* handle)
 {
     Idler* idler = static_cast<Idler*>(handle->data);
     if(!idler) {
-        fprintf(stderr, "idlerHook error: missing Idler context (handle->data)\n");
+        LogErr(LogLevel::Normal, "idlerHook error: missing Idler context (handle->data)\n");
         return;
     }
 

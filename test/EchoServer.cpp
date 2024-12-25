@@ -1,6 +1,7 @@
 #include <unordered_map>
 #include <uv.h>
 #include "App.h"
+#include "Logger.h"
 #include "Server.h"
 
 class Client
@@ -31,11 +32,11 @@ public:
 
         cel::client_info info;
         if(!cel::getClientInfo(uvClient, info)) {
-            fprintf(stderr, "ClientConnected: Failed to get client info\n");
+            cel::LogErr(cel::LogLevel::Normal, "ClientConnected: Failed to get client info\n");
             return;
         }
 
-        printf("Client connected: %s:%d\n", info.ip, info.port);
+        cel::LogOut(cel::LogLevel::Debug, "Client connected: %s:%d\n", info.ip, info.port);
 
         m_clients.emplace(uvClient, Client(info));
     }
@@ -49,7 +50,7 @@ public:
 
         auto& client = it->second;
         auto& info = client.GetInfo();
-        printf("Client disconnected: %s:%d\n", info.ip, info.port);
+        cel::LogOut(cel::LogLevel::Debug, "Client disconnected: %s:%d\n", info.ip, info.port);
 
         m_clients.erase(it);
     }
@@ -64,9 +65,9 @@ public:
         auto& client = it->second;
         auto& info = client.GetInfo();
 
-        printf("Incoming message from %s:%d...\n", info.ip, info.port);
+        cel::LogOut(cel::LogLevel::Debug, "Incoming message from %s:%d...\n", info.ip, info.port);
         uv_buf_t wrbuf = uv_buf_init(buf->base, nread);
-        printf("Echo: %s\n", wrbuf.base);
+        cel::LogOut(cel::LogLevel::Debug, "Echo: %s\n", wrbuf.base);
         SendMessage(uvClient, &wrbuf);
     }
 
@@ -74,8 +75,29 @@ private:
     std::unordered_map<uv_tcp_t*, Client> m_clients;
 };
 
+class TestLogger : public cel::Logger
+{
+public:
+    TestLogger(cel::LogLevel level) : cel::Logger(level) {}
+
+    void Log(cel::LogType type, cel::LogLevel level, const char* message) const override
+    {
+        CHECK_LOG_LEVEL(level)
+        fprintf(type == cel::LogType::Err ? stderr : stdout, "%s", message);
+    }
+
+    void Log(cel::LogType type, cel::LogLevel level, const char* format, va_list args) const override
+    {
+        CHECK_LOG_LEVEL(level)
+        vfprintf(type == cel::LogType::Err ? stderr : stdout, format, args);
+    }
+};
+
 int main()
 {
+    TestLogger logger(cel::LogLevel::Debug);
+    cel::SetLogger(&logger);
+
     cel::App& app = cel::App::GetInstance();
 
     EchoServer server(8070, 128);

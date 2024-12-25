@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "App.h"
 #include "Idler.h"
+#include "Logging.h"
 #include "Server.h"
 
 using namespace cel;
@@ -27,7 +28,7 @@ App::~App()
 int App::Run()
 {
     if(m_running) {
-        fprintf(stderr, "App is already running, cannot run again.\n");
+        LogErr(LogLevel::Normal, "App is already running, cannot run again.\n");
         return 0;
     }
 
@@ -47,7 +48,7 @@ int App::Run()
 void App::SetIdler(Idler *idler)
 {
     if(m_running) {
-        fprintf(stderr, "SetIdler error: Cannot set idler when app is already running.\n");
+        LogErr(LogLevel::Normal, "SetIdler error: Cannot set idler when app is already running.\n");
         return;
     }
 
@@ -57,7 +58,7 @@ void App::SetIdler(Idler *idler)
 void App::SetServer(Server *server)
 {
     if(m_running) {
-        fprintf(stderr, "SetServer error: Cannot set server when app is already running.\n");
+        LogErr(LogLevel::Normal, "SetServer error: Cannot set server when app is already running.\n");
         return;
     }
 
