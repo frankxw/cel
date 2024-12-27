@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include "Exceptions.h"
 #include "Idler.h"
 #include "Logging.h"
 
@@ -21,10 +22,6 @@ void Idler::Start(uv_loop_t* loop)
 void idlerHook(uv_idle_t* handle)
 {
     Idler* idler = static_cast<Idler*>(handle->data);
-    if(!idler) {
-        LogErr(LogLevel::Normal, "idlerHook error: missing Idler context (handle->data)\n");
-        return;
-    }
-
+    ASSERT(idler != nullptr, "idlerHook error: missing Idler context (handle->data)\n");
     idler->Execute();
 }

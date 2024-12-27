@@ -9,9 +9,9 @@ Once the repo is checked out, make sure to setup the dependencies:
 - Navigate to the root directory
 - `git submodule init`
 - `git submodule update`
-## libuv
+### libuv
 Follow the instructions on the [github repo](https://github.com/libuv/libuv).
-### Mac / Linux
+#### Mac / Linux
 Using [cmake](https://cmake.org/), do the following:
 - `cd dep/libuv`
 - `mkdir -p build`
@@ -29,3 +29,21 @@ Run `premake.bat` and then open the solution in the `build/` folder.
 
 # Running Tests
 Once built, navigate to `bin/[Debug|Release]/` and run `EchoServer`.  In a shell you can run `nc localhost 8070` and anything you type will be echoed back.
+
+# Usage
+This library tries to be straightforward.  You will want to construct an App and then run it.
+```
+// First, always setup the global logger if desired.
+YourLogger logger(someLogLevel /*see: cel::LogLevel*/);
+cel::SetLogger(&logger);
+
+// We can access the app singleton anywhere
+cel::App& app = cel::App::GetInstance();
+// Next setup all the App components
+EchoServer server(8070, 128);
+// Make sure to call app.Initialize before running (and only once)
+app.Initialize(&server, nullptr);
+
+// Finally run the app, which will execute the libuv event loop (once this returns the process will exit)
+app.Run();
+```

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "App.h"
+#include "Exceptions.h"
 #include "Logging.h"
 #include "TimeKeeper.h"
 #include "TimerCallback.h"
@@ -40,12 +41,9 @@ int TimeKeeper::CreateTimer(uint64_t timeout, uint64_t repeat, TimerCallback* ca
     m_timers[key] = uv_timer_t();
 
     auto elt = m_timers.find(key);
-    if(elt == m_timers.end()) {
-        LogErr(LogLevel::Normal, "Failed to insert timer.\n");
-        return 0;
-    }
+    CHECK(elt != m_timers.end(), return 0;, LogLevel::Normal, "Failed to insert timer.\n");
 
-    uv_timer_init(app.GetLoop(), &elt->second);
+    uv_timer_init(app.GetUVLoop(), &elt->second);
     elt->second.data = callback;
     uv_timer_start(&elt->second, timerCallback, timeout, repeat);
 

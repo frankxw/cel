@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "App.h"
+#include "Exceptions.h"
 #include "Idler.h"
 #include "Logging.h"
 #include "Server.h"
@@ -7,30 +8,38 @@
 using namespace cel;
 
 App::App()
-    : m_running(false)
-    , m_idler(nullptr)
+    : m_initialized(false)
+    , m_running(false)
+    , m_loop(nullptr)
     , m_server(nullptr)
+    , m_idler(nullptr)
 {
-    m_loop = uv_default_loop();
+
 }
 
 App::~App()
 {
-    m_idler = nullptr;
-    m_server = nullptr;
-
     if(m_loop) {
         uv_loop_close(m_loop);
         m_loop = nullptr;
     }
 }
 
+void App::Initialize(Server* server, Idler* idler)
+{
+    ASSERT(!m_initialized, "Trying to initialize app again.\n");
+
+    m_initialized = true;
+    m_loop = uv_default_loop();
+
+    m_server = server;
+    m_idler = idler;
+}
+
 int App::Run()
 {
-    if(m_running) {
-        LogErr(LogLevel::Normal, "App is already running, cannot run again.\n");
-        return 0;
-    }
+    ASSERT(m_initialized, "Trying to run app without initializing it.\n");
+    ASSERT(!m_running, "App is already running, cannot run again.\n");
 
     m_running = true;
 
@@ -43,24 +52,4 @@ int App::Run()
     }
 
     return uv_run(m_loop, UV_RUN_DEFAULT);
-}
-
-void App::SetIdler(Idler *idler)
-{
-    if(m_running) {
-        LogErr(LogLevel::Normal, "SetIdler error: Cannot set idler when app is already running.\n");
-        return;
-    }
-
-    m_idler = idler;
-}
-
-void App::SetServer(Server *server)
-{
-    if(m_running) {
-        LogErr(LogLevel::Normal, "SetServer error: Cannot set server when app is already running.\n");
-        return;
-    }
-
-    m_server = server;
 }

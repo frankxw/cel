@@ -20,30 +20,33 @@ namespace cel
     class App
     {
     public:
+        App();
+        ~App();
+
         NO_COPY(App)
         NO_MOVE(App)
 
-        static App& GetInstance() {
+    public:
+        void Initialize(Server* server, Idler* idler);
+
+        static App& GetInstance()
+        {
             static App inst;
             return inst;
         }
 
         int Run();
 
-        uv_loop_t* GetLoop() { return m_loop; };
         TimeKeeper& GetTimeKeeper() { return m_timeKeeper; };
+        uv_loop_t* GetUVLoop() const { return m_loop; };
 
-        void SetIdler(Idler* idler);
-        void SetServer(Server* server);
-
-    public:
-        App();
-        ~App();
-
+    private:
+        bool m_initialized;
         bool m_running;
         uv_loop_t* m_loop;
-        Idler* m_idler;
+
         Server* m_server;
+        Idler* m_idler;
         TimeKeeper m_timeKeeper;
     };
 

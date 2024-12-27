@@ -1,6 +1,7 @@
 #include <unordered_map>
 #include <uv.h>
 #include "App.h"
+#include "Exceptions.h"
 #include "Logger.h"
 #include "Server.h"
 
@@ -82,13 +83,11 @@ public:
 
     void Log(cel::LogType type, cel::LogLevel level, const char* message) const override
     {
-        CHECK_LOG_LEVEL(level)
         fprintf(type == cel::LogType::Err ? stderr : stdout, "%s", message);
     }
 
     void Log(cel::LogType type, cel::LogLevel level, const char* format, va_list args) const override
     {
-        CHECK_LOG_LEVEL(level)
         vfprintf(type == cel::LogType::Err ? stderr : stdout, format, args);
     }
 };
@@ -99,9 +98,8 @@ int main()
     cel::SetLogger(&logger);
 
     cel::App& app = cel::App::GetInstance();
-
     EchoServer server(8070, 128);
-    app.SetServer(&server);
+    app.Initialize(&server, nullptr);
 
     app.Run();
 }

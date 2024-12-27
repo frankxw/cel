@@ -1,8 +1,7 @@
 #include <stdarg.h>
+#include <stdio.h>
 #include "Logger.h"
 #include "Logging.h"
-
-#include <stdio.h>
 
 using namespace cel;
 
@@ -17,6 +16,10 @@ void cel::Log(LogType type, LogLevel level, const char* message)
 {
     if(!s_logger)
         return;
+
+    if(level < s_logger->GetLogLevel())
+        return;
+
     s_logger->Log(type, level, message);
 }
 
@@ -24,6 +27,10 @@ void cel::Log(LogType type, LogLevel level, const char* format, va_list args)
 {
     if(!s_logger)
         return;
+
+    if(level < s_logger->GetLogLevel())
+        return;
+
     s_logger->Log(type, level, format, args);
 }
 

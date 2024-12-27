@@ -17,6 +17,10 @@ namespace cel
     {
     friend class App;
 
+    private:
+        TimeKeeper() {};
+        ~TimeKeeper() {};
+
     public:
         int SetTimeout(uint64_t timeout, TimerCallback* callback);
         void ClearTimeout(int timerId);
@@ -25,13 +29,11 @@ namespace cel
         void ClearInterval(int timerId);
 
     private:
-        TimeKeeper() {};
-        ~TimeKeeper() {};
-
         int CreateTimer(uint64_t timeout, uint64_t repeat, TimerCallback* callback);
         void RemoveTimer(int key);
         int GenerateTimerId();
 
+    private:
         TimerMap m_timers;
     };
 

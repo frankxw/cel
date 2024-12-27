@@ -1,6 +1,7 @@
 #pragma once
 
 #include <uv.h>
+#include "ClassUtils.h"
 
 namespace cel
 {
@@ -18,16 +19,19 @@ namespace cel
 
     public:
         Idler() {};
-
-        virtual void Execute() {};
-
+        NO_COPY(Idler)
+        NO_MOVE(Idler)
     protected:
         ~Idler();
 
-        uv_idle_t m_uvIdler;
+    public:
+        virtual void Execute() {};
 
     private:
         void Start(uv_loop_t* loop);
+
+    private:
+        uv_idle_t m_uvIdler;
     };
 
 }

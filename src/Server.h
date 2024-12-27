@@ -6,7 +6,8 @@ namespace cel
 {
     class App;
 
-    using client_info = struct client_info {
+    using client_info = struct client_info
+    {
         char ip[INET6_ADDRSTRLEN];
         int port;
     };
@@ -23,7 +24,12 @@ namespace cel
     public:
         Server() = delete;
         Server(int port, int backlog);
+        NO_COPY(Server)
+        NO_MOVE(Server)
+    protected:
+        ~Server();
 
+    public:
         int GetPort() { return m_port; };
         int GetBacklog() { return m_backlog; };
 
@@ -32,15 +38,13 @@ namespace cel
         virtual void ClientMessage(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) {};
         void SendMessage(uv_stream_t* client, uv_buf_t* wrbuf);
 
-    protected:
-        ~Server();
+    private:
+        void Start(uv_loop_t* loop);
 
+    protected:
         int m_port;
         int m_backlog;
         uv_tcp_t m_uvServer;
-
-    private:
-        void Start(uv_loop_t* loop);
     };
 
     bool getClientInfo(uv_tcp_t* client, client_info& info);
