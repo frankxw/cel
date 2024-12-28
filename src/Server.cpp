@@ -6,6 +6,8 @@
 
 using namespace cel;
 
+constexpr int DEFAULT_SERVER_BACKLOG = 128;
+
 void allocBuffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
 void onWrite(uv_write_t* req, int status);
 void onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf);
@@ -14,6 +16,13 @@ void onNewConnection(uv_stream_t* server, int status);
 Server::Server(int port, int backlog)
     : m_port(port)
     , m_backlog(backlog)
+{
+
+}
+
+Server::Server(int port)
+    : m_port(port)
+    , m_backlog(DEFAULT_SERVER_BACKLOG)
 {
 
 }

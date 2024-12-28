@@ -19,7 +19,7 @@ private:
 class EchoServer : public cel::Server
 {
 public:
-    EchoServer(int port, int backlog) : cel::Server(port, backlog) {};
+    EchoServer(int port) : cel::Server(port) {};
 
     void ClientConnected(uv_tcp_t* uvClient) override
     {
@@ -98,7 +98,7 @@ int main()
     cel::SetLogger(&logger);
 
     cel::App& app = cel::App::GetInstance();
-    EchoServer server(8070, 128);
+    EchoServer server(8070);
     app.Initialize(&server, nullptr);
 
     app.Run();

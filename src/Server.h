@@ -23,6 +23,7 @@ namespace cel
 
     public:
         Server() = delete;
+        Server(int port);
         Server(int port, int backlog);
         NO_COPY(Server)
         NO_MOVE(Server)
@@ -39,6 +40,7 @@ namespace cel
         void SendMessage(uv_stream_t* client, uv_buf_t* wrbuf);
 
     private:
+        // Should only be called by App
         void Start(uv_loop_t* loop);
 
     protected:

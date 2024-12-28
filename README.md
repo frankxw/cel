@@ -43,7 +43,7 @@ cel::SetLogger(&logger);
 // In general you can grab the App singleton anywhere
 cel::App& app = cel::App::GetInstance();
 // Next, setup all the App components
-EchoServer server(8070, 128);
+EchoServer server(8070);
 // Make sure to call app.Initialize() before running (and only once)
 app.Initialize(
     /* Server */ &server,

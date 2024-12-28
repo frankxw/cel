@@ -17,7 +17,7 @@ using ClientMap = std::unordered_map<uv_tcp_t*, Client>;
 class BasicServer : public cel::Server
 {
 public:
-    BasicServer(int port, int backlog) : cel::Server(port, backlog) {};
+    BasicServer(int port) : cel::Server(port) {};
 
     void ClientConnected(uv_tcp_t* uvClient)
     {
@@ -145,7 +145,7 @@ int main()
 
     cel::App& app = cel::App::GetInstance();
 
-    BasicServer server(8070, 128);
+    BasicServer server(8070);
     Cruncher crunch;
 
     app.Initialize(&server, &crunch);

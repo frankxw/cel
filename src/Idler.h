@@ -28,6 +28,7 @@ namespace cel
         virtual void Execute() {};
 
     private:
+        // Should only be called by App
         void Start(uv_loop_t* loop);
 
     private:
