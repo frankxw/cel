@@ -28,7 +28,10 @@ Run `premake.sh` and then you can use `make` in the `build/` folder.
 Run `premake.bat` and then open the solution in the `build/` folder.
 
 # Running Tests
+### EchoServer
 Once built, navigate to `bin/[Debug|Release]/` and run `EchoServer`.  In a shell you can run `nc localhost 8070` and anything you type will be echoed back.
+### BasicServer
+Once built, navigate to `bin/[Debug|Release]/` and run `BasicServer`.  In a shell you can run `nc localhost 8070` and anything you type will be echoed back while the server is still running.  It will be printing a few messages and then exiting.
 
 # Usage
 This library tries to be straightforward.  You will want to construct an App and then run it.

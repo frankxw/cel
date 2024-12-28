@@ -41,3 +41,19 @@ project "EchoTest"
 
    filter { "system:unix" }
       links { "uv:static" }
+
+project "BasicTest"
+   kind "ConsoleApp"
+   language "C++"
+   targetdir "../bin/%{cfg.buildcfg}"
+
+   files { "../test/BasicServer.cpp" }
+   includedirs { "../src", "../dep/libuv/include" }
+   links { "cel" }
+
+   -- -Bstatic doesn't work on mac :(
+   filter { "system:macosx" }
+      linkoptions { "../dep/libuv/build/libuv.a" }
+
+   filter { "system:unix" }
+      links { "uv:static" }
