@@ -39,6 +39,11 @@ namespace cel
         virtual void ClientMessage(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) {};
         void SendMessage(uv_stream_t* client, uv_buf_t* wrbuf);
 
+        void HandleNewUVStreamConnection(uv_stream_t* server, int status);
+        void HandleUVStreamRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf);
+        void AllocUVReadBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf);
+        void HandleUVStreamWrite(uv_write_t* req, int status);
+
     private:
         // Should only be called by App
         void Start(uv_loop_t* loop);

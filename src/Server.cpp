@@ -2,6 +2,7 @@
 #include "App.h"
 #include "Exceptions.h"
 #include "Logging.h"
+#include "ScopeGuard.h"
 #include "Server.h"
 
 using namespace cel;
@@ -36,6 +37,56 @@ void Server::SendMessage(uv_stream_t* client, uv_buf_t* wrbuf)
 {
     uv_write_t* req = (uv_write_t *) malloc(sizeof(uv_write_t));
     uv_write(req, client, wrbuf, 1, onWrite);
+}
+
+void Server::HandleNewUVStreamConnection(uv_stream_t* server, int status)
+{
+    App& app = App::GetInstance();
+
+    CHECK(status == 0, return;, LogLevel::Normal, "New connection error %s\n", uv_strerror(status));
+
+    uv_tcp_t* client = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
+    uv_tcp_init(app.GetUVLoop(), client);
+    client->data = this;
+    if(uv_accept(server, (uv_stream_t*) client) != 0) {
+        uv_close((uv_handle_t*) client, NULL);
+        return;
+    }
+
+    ClientConnected(client);
+
+    uv_read_start((uv_stream_t*) client, allocBuffer, onRead);
+}
+
+void Server::HandleUVStreamRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
+{
+    auto onExit = scope_exit{[buf]() {
+        // We always want to free this
+        if(buf->base) {
+            free(buf->base);
+        }
+    }};
+
+    if(nread < 0) {
+        CHECK(nread == UV_EOF, ;, LogLevel::Normal, "onRead error: %s\n", uv_err_name(nread));
+        ClientDisconnected((uv_tcp_t*) client);
+        uv_close((uv_handle_t*) client, NULL);
+    }
+    else if(nread > 0) {
+        ClientMessage(client, nread, buf);
+    }
+}
+
+void Server::AllocUVReadBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
+{
+    buf->base = (char*) malloc(suggestedSize);
+    buf->len = suggestedSize;
+}
+
+void Server::HandleUVStreamWrite(uv_write_t* req, int status)
+{
+    CHECK(status == 0, ;, LogLevel::Normal, "Write error %s\n", uv_strerror(status));
+    free(req);
 }
 
 void Server::Start(uv_loop_t* loop)
@@ -78,57 +129,30 @@ bool cel::getClientInfo(uv_tcp_t* client, client_info& info)
 
 void allocBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
 {
-    buf->base = (char*) malloc(suggestedSize);
-    buf->len = suggestedSize;
+    Server* appServer = App::GetInstance().GetServer();
+    ASSERT(appServer != nullptr, "allocBuffer error: Missing global App Server\n");
+    appServer->AllocUVReadBuffer(handle, suggestedSize, buf);
 }
 
 void onWrite(uv_write_t* req, int status)
 {
-    CHECK(status == 0, ;, LogLevel::Normal, "Write error %s\n", uv_strerror(status));  // TODO: double check uv status (> 0?)
-    free(req);
+    Server* appServer = App::GetInstance().GetServer();
+    // Note: if we change the assert below to something less fatal, we'll have to deal with req not being freed.
+    ASSERT(appServer != nullptr, "onWrite error: Missing Server context (client->data)\n");
+    appServer->HandleUVStreamWrite(req, status);
 }
 
 void onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 {
-    Server* server = static_cast<Server*>(client->data);
-    if(!server) {
-        LogErr(LogLevel::Normal, "onRead error: Missing Server context (client->data)\n");
-        // TODO: free buf->base?
-        // Also convert to a CHECK?
-        return;
-    }
-
-    if(nread < 0) {
-        CHECK(nread == UV_EOF, ;, LogLevel::Normal, "onRead error: %s\n", uv_err_name(nread));
-
-        server->ClientDisconnected((uv_tcp_t*) client);
-        uv_close((uv_handle_t*) client, NULL);
-    }
-    else if(nread > 0) {
-        server->ClientMessage(client, nread, buf);
-    }
-
-    if(buf->base) {
-        free(buf->base);
-    }
+    Server* appServer = static_cast<Server*>(client->data);
+    // Note: if we change the assert below to something less fatal, we'll have to deal with buf->base not being freed.
+    ASSERT(appServer != nullptr, "onRead error: Missing Server context (client->data)\n");
+    appServer->HandleUVStreamRead(client, nread, buf);
 }
 
 void onNewConnection(uv_stream_t* server, int status)
 {
-    CHECK(status >= 0, return;, LogLevel::Normal, "New connection error %s\n", uv_strerror(status)); // TODO: double check uv status (> 0?)
-
-    App& app = App::GetInstance();
     Server* appServer = static_cast<Server*>(server->data);
     CHECK(appServer != nullptr, return;, LogLevel::Normal, "onNewConnection error: Missing Server context (server->data)\n");
-
-    uv_tcp_t* client = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
-    uv_tcp_init(app.GetUVLoop(), client);
-    client->data = appServer;
-    if(uv_accept(server, (uv_stream_t*) client) != 0) {
-        uv_close((uv_handle_t*) client, NULL);
-        return;
-    }
-
-    appServer->ClientConnected(client);
-    uv_read_start((uv_stream_t*) client, allocBuffer, onRead);
+    appServer->HandleNewUVStreamConnection(server, status);
 }

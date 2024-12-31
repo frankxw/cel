@@ -19,6 +19,9 @@ namespace cel
      */
     class App
     {
+    friend class Server;
+    friend class TimeKeeper;
+
     public:
         App();
         ~App();
@@ -37,7 +40,10 @@ namespace cel
 
         int Run();
 
+        Server* GetServer() const { return m_server; }
         TimeKeeper& GetTimeKeeper() { return m_timeKeeper; };
+
+    private:
         uv_loop_t* GetUVLoop() const { return m_loop; };
 
     private:
