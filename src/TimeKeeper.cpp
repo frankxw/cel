@@ -3,33 +3,27 @@
 #include "Exceptions.h"
 #include "Logging.h"
 #include "TimeKeeper.h"
-#include "TimerCallback.h"
 
 using namespace cel;
 
 void timerCallback(uv_timer_t* handle);
 
-int TimeKeeper::SetTimeout(uint64_t timeout, TimerCallback* callback)
+int TimeKeeper::SetTimeout(uint64_t timeout, TimerCallback callback)
 {
     return CreateTimer(timeout, 0, callback);
 }
 
-void TimeKeeper::ClearTimeout(int timerId)
-{
-    return RemoveTimer(timerId);
-}
-
-int TimeKeeper::SetInterval(uint64_t timeout, uint64_t repeat, TimerCallback* callback)
+int TimeKeeper::SetInterval(uint64_t timeout, uint64_t repeat, TimerCallback callback)
 {
     return CreateTimer(timeout, repeat, callback);
 }
 
-void TimeKeeper::ClearInterval(int timerId)
+void TimeKeeper::CancelTimer(int timerId)
 {
-    return RemoveTimer(timerId);
+    RemoveTimer(timerId);
 }
 
-int TimeKeeper::CreateTimer(uint64_t timeout, uint64_t repeat, TimerCallback* callback)
+int TimeKeeper::CreateTimer(uint64_t timeout, uint64_t repeat, TimerCallback callback)
 {
     App& app = App::GetInstance();
 
@@ -38,27 +32,28 @@ int TimeKeeper::CreateTimer(uint64_t timeout, uint64_t repeat, TimerCallback* ca
         return 0;
     }
 
-    m_timers[key] = uv_timer_t();
+    m_timers[key] = {callback, uv_timer_t(), key, repeat > 0};
 
-    auto elt = m_timers.find(key);
-    CHECK(elt != m_timers.end(), return 0;, LogLevel::Normal, "Failed to insert timer.\n");
+    auto it = m_timers.find(key);
+    CHECK(it != m_timers.end(), return 0;, LogLevel::Normal, "Failed to insert timer.\n");
+    TimerInternalCallback& timerData = it->second;
 
-    uv_timer_init(app.GetUVLoop(), &elt->second);
-    elt->second.data = callback;
-    uv_timer_start(&elt->second, timerCallback, timeout, repeat);
+    uv_timer_init(app.GetUVLoop(), &timerData.m_uvTimerHandle);
+    timerData.m_uvTimerHandle.data = &timerData;
+    uv_timer_start(&timerData.m_uvTimerHandle, timerCallback, timeout, repeat);
 
     return key;
 }
 
 void TimeKeeper::RemoveTimer(int key)
 {
-    auto elt = m_timers.find(key);
-    if(elt == m_timers.end()) {
+    auto it = m_timers.find(key);
+    if(it == m_timers.end()) {
         return;
     }
 
-    uv_timer_stop(&elt->second);
-    m_timers.erase(elt);
+    uv_timer_stop(&it->second.m_uvTimerHandle);
+    m_timers.erase(it);
 }
 
 int TimeKeeper::GenerateTimerId()
@@ -85,12 +80,24 @@ int TimeKeeper::GenerateTimerId()
     }
 }
 
+void TimeKeeper::CancelAllTimers()
+{
+    for(auto it : m_timers)
+    {
+        uv_timer_stop(&it.second.m_uvTimerHandle);
+    }
+    m_timers.clear();
+}
+
 void timerCallback(uv_timer_t* handle)
 {
-    TimerCallback *cb = static_cast<TimerCallback*>(handle->data);
-    if(!cb) {
-        return;
-    }
+    CHECK(handle != nullptr, return;, LogLevel::Normal, "timerCallback error: null handle.\n");
 
-    cb->Callback();
+    App& app = App::GetInstance();
+    TimerInternalCallback* cbData = static_cast<TimerInternalCallback*>(handle->data);
+    CHECK(cbData != nullptr, return;, LogLevel::Normal, "timerCallback error: failed to parse timer context.\n");
+    cbData->m_callback();
+    if(!cbData->m_repeating) {
+        app.CancelTimer(cbData->m_key);
+    }
 }

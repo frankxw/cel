@@ -5,7 +5,6 @@
 #include "Idler.h"
 #include "Logger.h"
 #include "Server.h"
-#include "TimerCallback.h"
 
 using Client = struct Client
 {
@@ -78,38 +77,6 @@ private:
     ClientMap m_clients;
 };
 
-class TestTimerCb : public cel::TimerCallback
-{
-public:
-    TestTimerCb(void *context, bool firstOne) : cel::TimerCallback(context), m_firstOne(firstOne) {};
-
-    virtual void Callback()
-    {
-        BasicServer *gs = static_cast<BasicServer*>(this->m_context);
-        if(m_firstOne) {
-            gs->PrintTestMsg();
-        }
-        else {
-            gs->PrintTestMsg2();
-        }
-    }
-
-private:
-    bool m_firstOne;
-};
-
-class QuitTimerCb : public cel::TimerCallback
-{
-public:
-    QuitTimerCb(void *context) : cel::TimerCallback(context) {};
-
-    virtual void Callback()
-    {
-        cel::App& app = cel::App::GetInstance();
-        uv_stop(app.GetUVLoop());
-    }
-};
-
 class Cruncher : public cel::Idler
 {
 public:
@@ -150,14 +117,18 @@ int main()
 
     app.Initialize(&server, &crunch);
 
-    TestTimerCb cb(&server, true);
-    app.GetTimeKeeper().SetTimeout(3'000, &cb);
+    app.SetTimeout(3'000, [&server]() {
+        server.PrintTestMsg();
+    });
 
-    TestTimerCb cb2(&server, false);
-    app.GetTimeKeeper().SetInterval(4'000, 2'000, &cb2);
+    app.SetTimeout(10'000, [&app]() {
+        cel::LogOut(cel::LogLevel::Normal, "Quitting\n");
+        app.Quit();
+    });
 
-    QuitTimerCb qcb(nullptr);
-    app.GetTimeKeeper().SetTimeout(10'000, &qcb);
+    app.SetInterval(8'000, 2'000, [&server]() {
+        server.PrintTestMsg2();
+    });
 
     app.Run();
     cel::LogOut(cel::LogLevel::Debug, "End\n");

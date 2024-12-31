@@ -34,5 +34,4 @@ namespace cel
     private:
         uv_idle_t m_uvIdler;
     };
-
 }

@@ -32,5 +32,4 @@ namespace cel
     protected:
         LogLevel m_logLevel;
     };
-
 }

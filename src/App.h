@@ -2,6 +2,7 @@
 
 #include <uv.h>
 #include "ClassUtils.h"
+#include "CommonTypes.h"
 #include "TimeKeeper.h"
 
 namespace cel
@@ -39,9 +40,13 @@ namespace cel
         }
 
         int Run();
+        void Quit();
 
         Server* GetServer() const { return m_server; }
-        TimeKeeper& GetTimeKeeper() { return m_timeKeeper; };
+
+        int SetTimeout(uint64_t timeout, TimerCallback callback);
+        int SetInterval(uint64_t timeout, uint64_t repeat, TimerCallback callback);
+        void CancelTimer(int timerId);
 
     private:
         uv_loop_t* GetUVLoop() const { return m_loop; };
@@ -55,5 +60,4 @@ namespace cel
         Idler* m_idler;
         TimeKeeper m_timeKeeper;
     };
-
 }

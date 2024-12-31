@@ -53,3 +53,25 @@ int App::Run()
 
     return uv_run(m_loop, UV_RUN_DEFAULT);
 }
+
+void App::Quit()
+{
+    m_timeKeeper.CancelAllTimers();
+    uv_stop(m_loop);
+    m_running = false;
+}
+
+int App::SetTimeout(uint64_t timeout, TimerCallback callback)
+{
+    return m_timeKeeper.SetTimeout(timeout, callback);
+}
+
+int App::SetInterval(uint64_t timeout, uint64_t repeat, TimerCallback callback)
+{
+    return m_timeKeeper.SetInterval(timeout, repeat, callback);
+}
+
+void App::CancelTimer(int timerId)
+{
+    m_timeKeeper.CancelTimer(timerId);
+}
