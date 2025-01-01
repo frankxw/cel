@@ -22,6 +22,6 @@ void Idler::Start(uv_loop_t* loop)
 void idlerHook(uv_idle_t* handle)
 {
     Idler* idler = static_cast<Idler*>(handle->data);
-    ASSERT(idler != nullptr, "idlerHook error: missing Idler context (handle->data)\n");
+    CEL_ASSERT(idler != nullptr, "idlerHook error: missing Idler context (handle->data)\n");
     idler->Execute();
 }

@@ -13,7 +13,7 @@ void cel::SetMemoryManager(MemoryManager* manager)
 
 void* cel::AllocUVWriteBuffer(size_t bufferStructSize)
 {
-    ASSERT(bufferStructSize > 0, "AllocUVWriteBuffer: Invalid alloc size.\n");
+    CEL_ASSERT(bufferStructSize > 0, "AllocUVWriteBuffer: Invalid alloc size.\n");
 
     if(s_memoryManager)
         return s_memoryManager->AllocUVWriteBuffer(bufferStructSize);
@@ -23,7 +23,7 @@ void* cel::AllocUVWriteBuffer(size_t bufferStructSize)
 
 void* cel::AllocUVReadBuffer(size_t suggestedSize)
 {
-    ASSERT(suggestedSize > 0, "AllocUVReadBuffer: Invalid alloc size.\n");
+    CEL_ASSERT(suggestedSize > 0, "AllocUVReadBuffer: Invalid alloc size.\n");
 
     if(s_memoryManager)
         return s_memoryManager->AllocUVReadBuffer(suggestedSize);
@@ -33,7 +33,7 @@ void* cel::AllocUVReadBuffer(size_t suggestedSize)
 
 void* cel::AllocUVClient(size_t bufferStructSize)
 {
-    ASSERT(bufferStructSize > 0, "AllocUVClient: Invalid alloc size.\n");
+    CEL_ASSERT(bufferStructSize > 0, "AllocUVClient: Invalid alloc size.\n");
 
     if(s_memoryManager)
         return s_memoryManager->AllocUVClient(bufferStructSize);

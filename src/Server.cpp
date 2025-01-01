@@ -44,7 +44,7 @@ void Server::HandleNewUVStreamConnection(uv_stream_t* server, int status)
 {
     App& app = App::GetInstance();
 
-    CHECK(status == 0, return;, LogLevel::Normal, "New connection error %s\n", uv_strerror(status));
+    CEL_CHECK(status == 0, return;, LogLevel::Normal, "New connection error %s\n", uv_strerror(status));
 
     uv_tcp_t* client = static_cast<uv_tcp_t*>(cel::AllocUVClient(sizeof(uv_tcp_t)));
     uv_tcp_init(app.GetUVLoop(), client);
@@ -69,7 +69,7 @@ void Server::HandleUVStreamRead(uv_stream_t* client, ssize_t nread, const uv_buf
     }};
 
     if(nread < 0) {
-        CHECK(nread == UV_EOF, ;, LogLevel::Normal, "onRead error: %s\n", uv_err_name(nread));
+        CEL_CHECK(nread == UV_EOF, ;, LogLevel::Normal, "onRead error: %s\n", uv_err_name(nread));
         ClientDisconnected((uv_tcp_t*) client);
         uv_close((uv_handle_t*) client, NULL);
     }
@@ -86,7 +86,7 @@ void Server::AllocUVReadBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf
 
 void Server::HandleUVStreamWrite(uv_write_t* req, int status)
 {
-    CHECK(status == 0, ;, LogLevel::Normal, "Write error %s\n", uv_strerror(status));
+    CEL_CHECK(status == 0, ;, LogLevel::Normal, "Write error %s\n", uv_strerror(status));
     free(req);
 }
 
@@ -101,18 +101,18 @@ void Server::Start(uv_loop_t* loop)
 
     uv_tcp_bind(&m_uvServer, (const struct sockaddr*)&addr, 0);
     const int r = uv_listen((uv_stream_t*) &m_uvServer, m_backlog, onNewConnection);
-    CHECK(r == 0, return;, LogLevel::Normal, "Listen error %s\n", uv_strerror(r));
+    CEL_CHECK(r == 0, return;, LogLevel::Normal, "Listen error %s\n", uv_strerror(r));
 }
 
 bool cel::getClientInfo(uv_tcp_t* client, client_info& info)
 {
-    CHECK(client != nullptr, return false;, LogLevel::Normal, "getClientInfo: passed in null client\n");
+    CEL_CHECK(client != nullptr, return false;, LogLevel::Normal, "getClientInfo: passed in null client\n");
 
     struct sockaddr_storage addr;
     int nameLen = sizeof addr;
 
     const int getInfo = uv_tcp_getpeername(client, (struct sockaddr *)&addr, &nameLen);
-    CHECK(getInfo >= 0, return false;, LogLevel::Normal, "Get client info error %s\n", uv_err_name(getInfo));
+    CEL_CHECK(getInfo >= 0, return false;, LogLevel::Normal, "Get client info error %s\n", uv_err_name(getInfo));
 
     if(addr.ss_family == AF_INET) {
         struct sockaddr_in* s = (struct sockaddr_in *)&addr;
@@ -131,7 +131,7 @@ bool cel::getClientInfo(uv_tcp_t* client, client_info& info)
 void allocBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
 {
     Server* appServer = App::GetInstance().GetServer();
-    ASSERT(appServer != nullptr, "allocBuffer error: Missing global App Server\n");
+    CEL_ASSERT(appServer != nullptr, "allocBuffer error: Missing global App Server\n");
     appServer->AllocUVReadBuffer(handle, suggestedSize, buf);
 }
 
@@ -139,7 +139,7 @@ void onWrite(uv_write_t* req, int status)
 {
     Server* appServer = App::GetInstance().GetServer();
     // Note: if we change the assert below to something less fatal, we'll have to deal with req not being freed.
-    ASSERT(appServer != nullptr, "onWrite error: Missing Server context (client->data)\n");
+    CEL_ASSERT(appServer != nullptr, "onWrite error: Missing Server context (client->data)\n");
     appServer->HandleUVStreamWrite(req, status);
 }
 
@@ -147,13 +147,13 @@ void onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
 {
     Server* appServer = static_cast<Server*>(client->data);
     // Note: if we change the assert below to something less fatal, we'll have to deal with buf->base not being freed.
-    ASSERT(appServer != nullptr, "onRead error: Missing Server context (client->data)\n");
+    CEL_ASSERT(appServer != nullptr, "onRead error: Missing Server context (client->data)\n");
     appServer->HandleUVStreamRead(client, nread, buf);
 }
 
 void onNewConnection(uv_stream_t* server, int status)
 {
     Server* appServer = static_cast<Server*>(server->data);
-    CHECK(appServer != nullptr, return;, LogLevel::Normal, "onNewConnection error: Missing Server context (server->data)\n");
+    CEL_CHECK(appServer != nullptr, return;, LogLevel::Normal, "onNewConnection error: Missing Server context (server->data)\n");
     appServer->HandleNewUVStreamConnection(server, status);
 }

@@ -27,7 +27,7 @@ App::~App()
 
 void App::Initialize(Server* server, Idler* idler)
 {
-    ASSERT(!m_initialized, "Trying to initialize app again.\n");
+    CEL_ASSERT(!m_initialized, "Trying to initialize app again.\n");
 
     m_initialized = true;
     m_loop = uv_default_loop();
@@ -38,8 +38,8 @@ void App::Initialize(Server* server, Idler* idler)
 
 int App::Run()
 {
-    ASSERT(m_initialized, "Trying to run app without initializing it.\n");
-    ASSERT(!m_running, "App is already running, cannot run again.\n");
+    CEL_ASSERT(m_initialized, "Trying to run app without initializing it.\n");
+    CEL_ASSERT(!m_running, "App is already running, cannot run again.\n");
 
     m_running = true;
 

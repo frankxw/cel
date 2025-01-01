@@ -35,7 +35,7 @@ int TimeKeeper::CreateTimer(uint64_t timeout, uint64_t repeat, TimerCallback cal
     m_timers[key] = {callback, uv_timer_t(), key, repeat > 0};
 
     auto it = m_timers.find(key);
-    CHECK(it != m_timers.end(), return 0;, LogLevel::Normal, "Failed to insert timer.\n");
+    CEL_CHECK(it != m_timers.end(), return 0;, LogLevel::Normal, "Failed to insert timer.\n");
     TimerInternalCallback& timerData = it->second;
 
     uv_timer_init(app.GetUVLoop(), &timerData.m_uvTimerHandle);
@@ -91,11 +91,11 @@ void TimeKeeper::CancelAllTimers()
 
 void timerCallback(uv_timer_t* handle)
 {
-    CHECK(handle != nullptr, return;, LogLevel::Normal, "timerCallback error: null handle.\n");
+    CEL_CHECK(handle != nullptr, return;, LogLevel::Normal, "timerCallback error: null handle.\n");
 
     App& app = App::GetInstance();
     TimerInternalCallback* cbData = static_cast<TimerInternalCallback*>(handle->data);
-    CHECK(cbData != nullptr, return;, LogLevel::Normal, "timerCallback error: failed to parse timer context.\n");
+    CEL_CHECK(cbData != nullptr, return;, LogLevel::Normal, "timerCallback error: failed to parse timer context.\n");
     cbData->m_callback();
     if(!cbData->m_repeating) {
         app.CancelTimer(cbData->m_key);

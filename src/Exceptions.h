@@ -4,11 +4,11 @@
 #include "Logging.h"
 
 // Call when you want to crash because of a fatal condition failure.
-#define FATAL(...) { cel::Exceptions::DoAppFatal(__VA_ARGS__); }
+#define CEL_FATAL(...) { cel::Exceptions::DoAppFatal(__VA_ARGS__); }
 // Call to check a condition and then output the command (a return false; maybe?)
-#define CHECK(condition, command, logLevel, ...) { if(!(condition)) { cel::Exceptions::DoCheckFailed(logLevel, __VA_ARGS__); command } }
+#define CEL_CHECK(condition, command, logLevel, ...) { if(!(condition)) { cel::Exceptions::DoCheckFailed(logLevel, __VA_ARGS__); command } }
 // Call to assert a condition is true and crash if not.
-#define ASSERT(condition, ...) { if(!(condition)) cel::Exceptions::DoAssertFailed(__VA_ARGS__); }
+#define CEL_ASSERT(condition, ...) { if(!(condition)) cel::Exceptions::DoAssertFailed(__VA_ARGS__); }
 
 namespace cel
 {
