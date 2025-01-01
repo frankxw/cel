@@ -2,6 +2,7 @@
 #include "App.h"
 #include "Exceptions.h"
 #include "Logging.h"
+#include "Memory.h"
 #include "ScopeGuard.h"
 #include "Server.h"
 
@@ -35,7 +36,7 @@ Server::~Server()
 
 void Server::SendMessage(uv_stream_t* client, uv_buf_t* wrbuf)
 {
-    uv_write_t* req = (uv_write_t *) malloc(sizeof(uv_write_t));
+    uv_write_t* req = static_cast<uv_write_t*>(cel::AllocUVWriteBuffer(sizeof(uv_write_t)));
     uv_write(req, client, wrbuf, 1, onWrite);
 }
 
@@ -45,7 +46,7 @@ void Server::HandleNewUVStreamConnection(uv_stream_t* server, int status)
 
     CHECK(status == 0, return;, LogLevel::Normal, "New connection error %s\n", uv_strerror(status));
 
-    uv_tcp_t* client = (uv_tcp_t*) malloc(sizeof(uv_tcp_t));
+    uv_tcp_t* client = static_cast<uv_tcp_t*>(cel::AllocUVClient(sizeof(uv_tcp_t)));
     uv_tcp_init(app.GetUVLoop(), client);
     client->data = this;
     if(uv_accept(server, (uv_stream_t*) client) != 0) {
@@ -79,7 +80,7 @@ void Server::HandleUVStreamRead(uv_stream_t* client, ssize_t nread, const uv_buf
 
 void Server::AllocUVReadBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
 {
-    buf->base = (char*) malloc(suggestedSize);
+    buf->base = static_cast<char*>(cel::AllocUVReadBuffer(suggestedSize));
     buf->len = suggestedSize;
 }
 

@@ -4,6 +4,7 @@
 #include "Exceptions.h"
 #include "Idler.h"
 #include "Logger.h"
+#include "Memory.h"
 #include "Server.h"
 
 using Client = struct Client
@@ -105,10 +106,34 @@ public:
     }
 };
 
+class TestMemoryManager : public cel::MemoryManager
+{
+public:
+    TestMemoryManager() : cel::MemoryManager() {}
+
+    void* AllocUVWriteBuffer(size_t bufferStructSize)
+    {
+        return malloc(bufferStructSize);
+    }
+
+    void* AllocUVReadBuffer(size_t suggestedSize)
+    {
+        return malloc(suggestedSize);
+    }
+
+    void* AllocUVClient(size_t bufferStructSize)
+    {
+        return malloc(bufferStructSize);
+    }
+};
+
 int main()
 {
     TestLogger logger(cel::LogLevel::Debug);
     cel::SetLogger(&logger);
+
+    TestMemoryManager memoryManager;
+    cel::SetMemoryManager(&memoryManager);
 
     cel::App& app = cel::App::GetInstance();
 

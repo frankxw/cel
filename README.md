@@ -37,8 +37,12 @@ Once built, navigate to `bin/[Debug|Release]/` and run `BasicServer`.  In a shel
 This library tries to be straightforward.  You will want to construct an App and then run it.
 ```
 // First, always setup the global logger if desired.
-YourLogger logger(someLogLevel /*see: cel::LogLevel*/);
+YourLogger logger(someLogLevel /*see: cel::LogLevel*/); // Subclass of cel::Logger
 cel::SetLogger(&logger);
+
+// If you don't want to use basic system allocators, supply your own memory manager.
+YourMemoryManager memoryManager(); // Subclass of cel::MemoryManager
+cel::SetMemoryManager(&memoryManager);
 
 // In general you can grab the App singleton anywhere
 cel::App& app = cel::App::GetInstance();
