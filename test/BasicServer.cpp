@@ -7,62 +7,28 @@
 #include "Memory.h"
 #include "Server.h"
 
-using Client = struct Client
-{
-    cel::client_info info;
-};
-
-using ClientMap = std::unordered_map<uv_tcp_t*, Client>;
-
 class BasicServer : public cel::Server
 {
 public:
     BasicServer(int port) : cel::Server(port) {};
 
-    void ClientConnected(uv_tcp_t* uvClient)
+    void ClientConnected(cel::Client& client) override
     {
-        if(!uvClient) {
-            return;
-        }
-
-        if(m_clients.find(uvClient) != m_clients.end()) {
-            return;
-        }
-
-        Client client;
-        if(!cel::getClientInfo(uvClient, client.info)) {
-            fprintf(stderr, "ClientConnected: Failed to get client info\n");
-            return;
-        }
-
-        m_clients[uvClient] = client;
-
-        cel::LogOut(cel::LogLevel::Debug, "Client connected: %s:%d\n", client.info.ip, client.info.port);
-    };
-
-    void ClientDisconnected(uv_tcp_t* uvClient)
-    {
-        auto client = m_clients.find(uvClient);
-        if(client == m_clients.end()) {
-            return;
-        }
-
-        cel::LogOut(cel::LogLevel::Debug, "Client disconnected: %s:%d\n", client->second.info.ip, client->second.info.port);
-        m_clients.erase(client);
+        cel::LogOut(cel::LogLevel::Debug, "Client connected: %s:%d\n", client.GetIp(), client.GetPort());
     }
 
-    void ClientMessage(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf)
+    void ClientDisconnected(cel::Client& client) override
     {
-        auto client = m_clients.find((uv_tcp_t*) uvClient);
-        if(client == m_clients.end()) {
-            return;
-        }
+        cel::LogOut(cel::LogLevel::Debug, "Client disconnected: %s:%d\n", client.GetIp(), client.GetPort());
+    }
 
-        cel::LogOut(cel::LogLevel::Debug, "Incoming message from %s:%d...\n", client->second.info.ip, client->second.info.port);
+    void ClientMessage(cel::Client& client, ssize_t nread, const uv_buf_t* buf) override
+    {
+        cel::LogOut(cel::LogLevel::Debug, "Incoming message from %s:%d...\n", client.GetIp(), client.GetPort());
         uv_buf_t wrbuf = uv_buf_init(buf->base, nread);
         cel::LogOut(cel::LogLevel::Debug, "Echo: %s\n", wrbuf.base);
-        SendMessage(uvClient, &wrbuf);
-    };
+        client.SendMessage(&wrbuf);
+    }
 
     void PrintTestMsg()
     {
@@ -73,9 +39,6 @@ public:
     {
         cel::LogOut(cel::LogLevel::Normal, "This is the SECOND message\n");
     }
-
-private:
-    ClientMap m_clients;
 };
 
 class Cruncher : public cel::Idler

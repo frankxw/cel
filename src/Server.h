@@ -1,16 +1,12 @@
 #pragma once
 
+#include <unordered_map>
 #include <uv.h>
+#include "Client.h"
 
 namespace cel
 {
     class App;
-
-    using client_info = struct client_info
-    {
-        char ip[INET6_ADDRSTRLEN];
-        int port;
-    };
 
     /**
      * Main interface for networking.
@@ -20,6 +16,7 @@ namespace cel
     class Server
     {
     friend class App;
+    friend class Client;
 
     public:
         Server() = delete;
@@ -34,13 +31,12 @@ namespace cel
         int GetPort() { return m_port; };
         int GetBacklog() { return m_backlog; };
 
-        virtual void ClientConnected(uv_tcp_t* client) {};
-        virtual void ClientDisconnected(uv_tcp_t* client) {};
-        virtual void ClientMessage(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) {};
-        void SendMessage(uv_stream_t* client, uv_buf_t* wrbuf);
+        virtual void ClientConnected(Client& client) {};
+        virtual void ClientDisconnected(Client& client) {};
+        virtual void ClientMessage(Client& client, ssize_t nread, const uv_buf_t* buf) {};
 
         void HandleNewUVStreamConnection(uv_stream_t* server, int status);
-        void HandleUVStreamRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf);
+        void HandleUVStreamRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf);
         void AllocUVReadBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf);
         void HandleUVStreamWrite(uv_write_t* req, int status);
 
@@ -48,11 +44,16 @@ namespace cel
         // Should only be called by App
         void Start(uv_loop_t* loop);
 
+        bool MakeNewClient(uv_tcp_t* uvClient);
+        Client* GetClient(uv_tcp_t* uvClient);
+        void RemoveClient(uv_tcp_t* uvClient);
+
+        void SendMessage(uv_stream_t* uvClient, uv_buf_t* wrbuf);
+
     protected:
         int m_port;
         int m_backlog;
         uv_tcp_t m_uvServer;
+        std::unordered_map<uv_tcp_t*, Client> m_clients;
     };
-
-    bool getClientInfo(uv_tcp_t* client, client_info& info);
 }

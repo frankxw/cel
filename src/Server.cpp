@@ -12,7 +12,7 @@ constexpr int DEFAULT_SERVER_BACKLOG = 128;
 
 void allocBuffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
 void onWrite(uv_write_t* req, int status);
-void onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf);
+void onRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf);
 void onNewConnection(uv_stream_t* server, int status);
 
 Server::Server(int port, int backlog)
@@ -34,32 +34,34 @@ Server::~Server()
     m_uvServer.data = nullptr;
 }
 
-void Server::SendMessage(uv_stream_t* client, uv_buf_t* wrbuf)
-{
-    uv_write_t* req = static_cast<uv_write_t*>(cel::AllocUVWriteBuffer(sizeof(uv_write_t)));
-    uv_write(req, client, wrbuf, 1, onWrite);
-}
-
 void Server::HandleNewUVStreamConnection(uv_stream_t* server, int status)
 {
     App& app = App::GetInstance();
 
     CEL_CHECK(status == 0, return;, LogLevel::Normal, "New connection error %s\n", uv_strerror(status));
 
-    uv_tcp_t* client = static_cast<uv_tcp_t*>(cel::AllocUVClient(sizeof(uv_tcp_t)));
-    uv_tcp_init(app.GetUVLoop(), client);
-    client->data = this;
-    if(uv_accept(server, (uv_stream_t*) client) != 0) {
-        uv_close((uv_handle_t*) client, NULL);
+    uv_tcp_t* uvClient = static_cast<uv_tcp_t*>(cel::AllocUVClient(sizeof(uv_tcp_t)));
+    uv_tcp_init(app.GetUVLoop(), uvClient);
+    uvClient->data = this;
+    if(uv_accept(server, (uv_stream_t*) uvClient) != 0) {
+        uv_close((uv_handle_t*) uvClient, NULL);
         return;
     }
 
-    ClientConnected(client);
+    if(!MakeNewClient(uvClient)) {
+        LogErr(LogLevel::Normal, "HandleNewUVStreamConnection: failed to create new client object.\n");
+        uv_close((uv_handle_t*) uvClient, NULL);
+        return;
+    }
 
-    uv_read_start((uv_stream_t*) client, allocBuffer, onRead);
+    Client* client = GetClient(uvClient);
+    CEL_ASSERT(client != nullptr, "Could not find client that was just created.\n");
+    ClientConnected(*client);
+
+    uv_read_start((uv_stream_t*) uvClient, allocBuffer, onRead);
 }
 
-void Server::HandleUVStreamRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
+void Server::HandleUVStreamRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf)
 {
     auto onExit = scope_exit{[buf]() {
         // We always want to free this
@@ -68,13 +70,16 @@ void Server::HandleUVStreamRead(uv_stream_t* client, ssize_t nread, const uv_buf
         }
     }};
 
+    Client* client = GetClient((uv_tcp_t*) uvClient);
+    CEL_CHECK(client != nullptr, return;, LogLevel::Normal, "onRead error: Missing client for uvClient %p\n", uvClient);
+
     if(nread < 0) {
         CEL_CHECK(nread == UV_EOF, ;, LogLevel::Normal, "onRead error: %s\n", uv_err_name(nread));
-        ClientDisconnected((uv_tcp_t*) client);
-        uv_close((uv_handle_t*) client, NULL);
+        ClientDisconnected(*client);
+        RemoveClient((uv_tcp_t*) uvClient);
     }
     else if(nread > 0) {
-        ClientMessage(client, nread, buf);
+        ClientMessage(*client, nread, buf);
     }
 }
 
@@ -104,28 +109,40 @@ void Server::Start(uv_loop_t* loop)
     CEL_CHECK(r == 0, return;, LogLevel::Normal, "Listen error %s\n", uv_strerror(r));
 }
 
-bool cel::getClientInfo(uv_tcp_t* client, client_info& info)
+bool Server::MakeNewClient(uv_tcp_t* uvClient)
 {
-    CEL_CHECK(client != nullptr, return false;, LogLevel::Normal, "getClientInfo: passed in null client\n");
+    CEL_CHECK(m_clients.find(uvClient) == m_clients.end(), return false;, LogLevel::Normal, "Trying to create duplicate client object for uvClient %p\n", uvClient);
 
-    struct sockaddr_storage addr;
-    int nameLen = sizeof addr;
-
-    const int getInfo = uv_tcp_getpeername(client, (struct sockaddr *)&addr, &nameLen);
-    CEL_CHECK(getInfo >= 0, return false;, LogLevel::Normal, "Get client info error %s\n", uv_err_name(getInfo));
-
-    if(addr.ss_family == AF_INET) {
-        struct sockaddr_in* s = (struct sockaddr_in *)&addr;
-        info.port = ntohs(s->sin_port);
-        uv_inet_ntop(AF_INET, &s->sin_addr, info.ip, sizeof info.ip);
-    }
-    else {
-        struct sockaddr_in6* s = (struct sockaddr_in6 *)&addr;
-        info.port = ntohs(s->sin6_port);
-        uv_inet_ntop(AF_INET6, &s->sin6_addr, info.ip, sizeof info.ip);
+    m_clients[uvClient] = {};
+    if(!m_clients[uvClient].Initialize(uvClient)) {
+        LogErr(LogLevel::Normal, "MakeNewClient: failed to initialize new client object.\n");
+        m_clients.erase(uvClient);
+        return false;
     }
 
     return true;
+}
+
+Client* Server::GetClient(uv_tcp_t* uvClient)
+{
+    auto it = m_clients.find(uvClient);
+    if(it == m_clients.end())
+        return nullptr;
+
+    return &it->second;
+}
+
+void Server::RemoveClient(uv_tcp_t* uvClient)
+{
+    CEL_CHECK(uvClient != nullptr, return;, LogLevel::Normal, "Trying to remove a null client.\n");
+    uv_close((uv_handle_t*) uvClient, NULL);
+    m_clients.erase(uvClient);
+}
+
+void Server::SendMessage(uv_stream_t* uvClient, uv_buf_t* wrbuf)
+{
+    uv_write_t* req = static_cast<uv_write_t*>(cel::AllocUVWriteBuffer(sizeof(uv_write_t)));
+    uv_write(req, uvClient, wrbuf, 1, onWrite);
 }
 
 void allocBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
@@ -143,12 +160,12 @@ void onWrite(uv_write_t* req, int status)
     appServer->HandleUVStreamWrite(req, status);
 }
 
-void onRead(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf)
+void onRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf)
 {
-    Server* appServer = static_cast<Server*>(client->data);
+    Server* appServer = static_cast<Server*>(uvClient->data);
     // Note: if we change the assert below to something less fatal, we'll have to deal with buf->base not being freed.
     CEL_ASSERT(appServer != nullptr, "onRead error: Missing Server context (client->data)\n");
-    appServer->HandleUVStreamRead(client, nread, buf);
+    appServer->HandleUVStreamRead(uvClient, nread, buf);
 }
 
 void onNewConnection(uv_stream_t* server, int status)

@@ -5,75 +5,28 @@
 #include "Logger.h"
 #include "Server.h"
 
-class Client
-{
-public:
-    Client(const cel::client_info& info) : clientInfo(info) {}
-
-    const cel::client_info& GetInfo() { return clientInfo; };
-
-private:
-    cel::client_info clientInfo;
-};
-
 class EchoServer : public cel::Server
 {
 public:
     EchoServer(int port) : cel::Server(port) {};
 
-    void ClientConnected(uv_tcp_t* uvClient) override
+    void ClientConnected(cel::Client& client) override
     {
-        if(!uvClient) {
-            return;
-        }
-
-        if(m_clients.find(uvClient) != m_clients.end()) {
-            return;
-        }
-
-        cel::client_info info;
-        if(!cel::getClientInfo(uvClient, info)) {
-            cel::LogErr(cel::LogLevel::Normal, "ClientConnected: Failed to get client info\n");
-            return;
-        }
-
-        cel::LogOut(cel::LogLevel::Debug, "Client connected: %s:%d\n", info.ip, info.port);
-
-        m_clients.emplace(uvClient, Client(info));
+        cel::LogOut(cel::LogLevel::Debug, "Client connected: %s:%d\n", client.GetIp(), client.GetPort());
     }
 
-    void ClientDisconnected(uv_tcp_t* uvClient) override
+    void ClientDisconnected(cel::Client& client) override
     {
-        auto it = m_clients.find(uvClient);
-        if(it == m_clients.end()) {
-            return;
-        }
-
-        auto& client = it->second;
-        auto& info = client.GetInfo();
-        cel::LogOut(cel::LogLevel::Debug, "Client disconnected: %s:%d\n", info.ip, info.port);
-
-        m_clients.erase(it);
+        cel::LogOut(cel::LogLevel::Debug, "Client disconnected: %s:%d\n", client.GetIp(), client.GetPort());
     }
 
-    void ClientMessage(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf) override
+    void ClientMessage(cel::Client& client, ssize_t nread, const uv_buf_t* buf) override
     {
-        auto it = m_clients.find((uv_tcp_t*) uvClient);
-        if(it == m_clients.end()) {
-            return;
-        }
-
-        auto& client = it->second;
-        auto& info = client.GetInfo();
-
-        cel::LogOut(cel::LogLevel::Debug, "Incoming message from %s:%d...\n", info.ip, info.port);
+        cel::LogOut(cel::LogLevel::Debug, "Incoming message from %s:%d...\n", client.GetIp(), client.GetPort());
         uv_buf_t wrbuf = uv_buf_init(buf->base, nread);
         cel::LogOut(cel::LogLevel::Debug, "Echo: %s\n", wrbuf.base);
-        SendMessage(uvClient, &wrbuf);
+        client.SendMessage(&wrbuf);
     }
-
-private:
-    std::unordered_map<uv_tcp_t*, Client> m_clients;
 };
 
 class TestLogger : public cel::Logger
