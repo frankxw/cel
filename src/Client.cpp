@@ -2,6 +2,7 @@
 #include "App.h"
 #include "Client.h"
 #include "Exceptions.h"
+#include "Message.h"
 #include "Server.h"
 
 using namespace cel;
@@ -38,9 +39,9 @@ bool Client::Initialize(uv_tcp_t* uvClient)
     return true;
 }
 
-void Client::SendMessage(uv_buf_t* wrbuf)
+void Client::SendMessage(Message& message)
 {
     Server* appServer = App::GetInstance().GetServer();
     CEL_ASSERT(appServer != nullptr, "SendMessage error: Missing global App Server\n");
-    appServer->SendMessage((uv_stream_t*) m_uvClient, wrbuf);
+    appServer->SendMessage((uv_stream_t*) m_uvClient, message);
 }

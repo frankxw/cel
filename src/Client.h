@@ -5,6 +5,11 @@
 
 namespace cel
 {
+    class Message;
+
+    /**
+     * Represents an active connection to the server.
+     */
     class Client
     {
     friend class Server;
@@ -16,7 +21,7 @@ namespace cel
         const char* GetIp() const { return m_ip; }
         int GetPort() const { return m_port; }
 
-        void SendMessage(uv_buf_t* wrbuf);
+        void SendMessage(Message& message);
 
     private:
         bool Initialize(uv_tcp_t* uvClient);

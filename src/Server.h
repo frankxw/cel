@@ -7,6 +7,7 @@
 namespace cel
 {
     class App;
+    class Message;
 
     /**
      * Main interface for networking.
@@ -33,7 +34,7 @@ namespace cel
 
         virtual void ClientConnected(Client& client) {};
         virtual void ClientDisconnected(Client& client) {};
-        virtual void ClientMessage(Client& client, ssize_t nread, const uv_buf_t* buf) {};
+        virtual void ClientMessage(Client& client, const char* buf, size_t bufSize) {};
 
         void HandleNewUVStreamConnection(uv_stream_t* server, int status);
         void HandleUVStreamRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf);
@@ -48,12 +49,20 @@ namespace cel
         Client* GetClient(uv_tcp_t* uvClient);
         void RemoveClient(uv_tcp_t* uvClient);
 
-        void SendMessage(uv_stream_t* uvClient, uv_buf_t* wrbuf);
+        void SendMessage(uv_stream_t* uvClient, Message& message);
 
     protected:
         int m_port;
         int m_backlog;
         uv_tcp_t m_uvServer;
         std::unordered_map<uv_tcp_t*, Client> m_clients;
+    };
+
+    // We need to persist both of these pieces while a write is pending
+    struct write_req_t
+    {
+        uv_write_t m_req;
+        uv_buf_t m_buffer;
+        Message* m_message;
     };
 }

@@ -3,6 +3,7 @@
 #include "Exceptions.h"
 #include "Logging.h"
 #include "Memory.h"
+#include "Message.h"
 #include "ScopeGuard.h"
 #include "Server.h"
 
@@ -10,10 +11,10 @@ using namespace cel;
 
 constexpr int DEFAULT_SERVER_BACKLOG = 128;
 
-void allocBuffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
-void onWrite(uv_write_t* req, int status);
-void onRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf);
-void onNewConnection(uv_stream_t* server, int status);
+static void allocBuffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+static void onWrite(uv_write_t* req, int status);
+static void onRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf);
+static void onNewConnection(uv_stream_t* server, int status);
 
 Server::Server(int port, int backlog)
     : m_port(port)
@@ -64,9 +65,9 @@ void Server::HandleNewUVStreamConnection(uv_stream_t* server, int status)
 void Server::HandleUVStreamRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf)
 {
     auto onExit = scope_exit{[buf]() {
-        // We always want to free this
+        // We must always free this (see https://docs.libuv.org/en/v1.x/stream.html#c.uv_read_cb)
         if(buf->base) {
-            free(buf->base);
+            cel::FreeUVReadBuffer(buf->base);
         }
     }};
 
@@ -79,7 +80,7 @@ void Server::HandleUVStreamRead(uv_stream_t* uvClient, ssize_t nread, const uv_b
         RemoveClient((uv_tcp_t*) uvClient);
     }
     else if(nread > 0) {
-        ClientMessage(*client, nread, buf);
+        ClientMessage(*client, buf->base, static_cast<size_t>(nread));
     }
 }
 
@@ -91,8 +92,13 @@ void Server::AllocUVReadBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf
 
 void Server::HandleUVStreamWrite(uv_write_t* req, int status)
 {
+    CEL_ASSERT(req != nullptr, "HandleUVStreamWrite error: null req\n");
     CEL_CHECK(status == 0, ;, LogLevel::Normal, "Write error %s\n", uv_strerror(status));
-    free(req);
+
+    write_req_t* writeReq = (write_req_t*) req;
+    CEL_ASSERT(writeReq->m_message != nullptr, "HandleUVStreamWrite error: req has a null message\n");
+    writeReq->m_message->Destroy();
+    cel::FreeUVWriteBuffer(writeReq);
 }
 
 void Server::Start(uv_loop_t* loop)
@@ -139,20 +145,22 @@ void Server::RemoveClient(uv_tcp_t* uvClient)
     m_clients.erase(uvClient);
 }
 
-void Server::SendMessage(uv_stream_t* uvClient, uv_buf_t* wrbuf)
+void Server::SendMessage(uv_stream_t* uvClient, Message& message)
 {
-    uv_write_t* req = static_cast<uv_write_t*>(cel::AllocUVWriteBuffer(sizeof(uv_write_t)));
-    uv_write(req, uvClient, wrbuf, 1, onWrite);
+    write_req_t* req = static_cast<write_req_t*>(cel::AllocUVWriteBuffer(sizeof(write_req_t)));
+    req->m_buffer = uv_buf_init(message.GetBuffer(), message.GetBufferSize());
+    req->m_message = &message;
+    uv_write((uv_write_t*) req, uvClient, &req->m_buffer, 1, onWrite);
 }
 
-void allocBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
+static void allocBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf)
 {
     Server* appServer = App::GetInstance().GetServer();
     CEL_ASSERT(appServer != nullptr, "allocBuffer error: Missing global App Server\n");
     appServer->AllocUVReadBuffer(handle, suggestedSize, buf);
 }
 
-void onWrite(uv_write_t* req, int status)
+static void onWrite(uv_write_t* req, int status)
 {
     Server* appServer = App::GetInstance().GetServer();
     // Note: if we change the assert below to something less fatal, we'll have to deal with req not being freed.
@@ -160,7 +168,7 @@ void onWrite(uv_write_t* req, int status)
     appServer->HandleUVStreamWrite(req, status);
 }
 
-void onRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf)
+static void onRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf)
 {
     Server* appServer = static_cast<Server*>(uvClient->data);
     // Note: if we change the assert below to something less fatal, we'll have to deal with buf->base not being freed.
@@ -168,7 +176,7 @@ void onRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf)
     appServer->HandleUVStreamRead(uvClient, nread, buf);
 }
 
-void onNewConnection(uv_stream_t* server, int status)
+static void onNewConnection(uv_stream_t* server, int status)
 {
     Server* appServer = static_cast<Server*>(server->data);
     CEL_CHECK(appServer != nullptr, return;, LogLevel::Normal, "onNewConnection error: Missing Server context (server->data)\n");

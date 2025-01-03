@@ -1,11 +1,77 @@
 #include <stdio.h>
-#include <uv.h>
+#include <vector>
 #include "App.h"
 #include "Exceptions.h"
 #include "Idler.h"
 #include "Logger.h"
 #include "Memory.h"
+#include "Message.h"
 #include "Server.h"
+
+class SimpleMessage;
+static void DestroyMessage(SimpleMessage* msg);
+static SimpleMessage* MakeMessage();
+
+class SimpleMessage : public cel::Message
+{
+public:
+    SimpleMessage() : cel::Message(), m_buffer(nullptr), m_bufferSize(0) {}
+    ~SimpleMessage() {}
+
+public:
+    void CopyBuffer(const char* other, size_t len)
+    {
+        if(m_buffer != nullptr) {
+            cel::LogErr(cel::LogLevel::Normal, "Failed to copy buffer because our buffer is already created.\n");
+            return;
+        }
+
+        m_buffer = (char*) malloc(len);
+        std::memcpy(m_buffer, other, len);
+        m_bufferSize = len;
+    }
+
+    char* GetBuffer() override
+    {
+        return m_buffer;
+    }
+
+    unsigned int GetBufferSize() override
+    {
+        return m_bufferSize;
+    }
+
+    void Destroy() override
+    {
+        if(m_buffer)
+            free(m_buffer);
+        DestroyMessage(this);
+    }
+
+private:
+    char* m_buffer;
+    unsigned int m_bufferSize;
+};
+
+static std::vector<SimpleMessage*> s_messages;
+
+static void DestroyMessage(SimpleMessage* msg)
+{
+    auto it = std::find(s_messages.begin(), s_messages.end(), msg);
+    if(it == s_messages.end()) {
+        cel::LogErr(cel::LogLevel::Normal, "Failed to destroy message %p (was not in list).\n", msg);
+        return;
+    }
+    s_messages.erase(it);
+    delete msg;
+}
+
+static SimpleMessage* MakeMessage()
+{
+    SimpleMessage* newMsg = new SimpleMessage();
+    s_messages.push_back(newMsg);
+    return newMsg;
+}
 
 class BasicServer : public cel::Server
 {
@@ -15,6 +81,11 @@ public:
     void ClientConnected(cel::Client& client) override
     {
         cel::LogOut(cel::LogLevel::Debug, "Client connected: %s:%d\n", client.GetIp(), client.GetPort());
+
+        constexpr char welcomeMsg[] = "Welcome to the BasicServer!\n";
+        SimpleMessage* msg = MakeMessage();
+        msg->CopyBuffer(welcomeMsg, sizeof(welcomeMsg));
+        client.SendMessage(*msg);
     }
 
     void ClientDisconnected(cel::Client& client) override
@@ -22,12 +93,14 @@ public:
         cel::LogOut(cel::LogLevel::Debug, "Client disconnected: %s:%d\n", client.GetIp(), client.GetPort());
     }
 
-    void ClientMessage(cel::Client& client, ssize_t nread, const uv_buf_t* buf) override
+    void ClientMessage(cel::Client& client, const char* buf, size_t bufSize) override
     {
         cel::LogOut(cel::LogLevel::Debug, "Incoming message from %s:%d...\n", client.GetIp(), client.GetPort());
-        uv_buf_t wrbuf = uv_buf_init(buf->base, nread);
-        cel::LogOut(cel::LogLevel::Debug, "Echo: %s\n", wrbuf.base);
-        client.SendMessage(&wrbuf);
+
+        SimpleMessage* msg = MakeMessage();
+        msg->CopyBuffer(buf, bufSize);
+        cel::LogOut(cel::LogLevel::Debug, "Echo: %s\n", msg->GetBuffer());
+        client.SendMessage(*msg);
     }
 
     void PrintTestMsg()
@@ -44,7 +117,7 @@ public:
 class Cruncher : public cel::Idler
 {
 public:
-    void Execute()
+    void Execute() override
     {
         static int a = 0;
         if(a++ < 300) {
@@ -74,17 +147,27 @@ class TestMemoryManager : public cel::MemoryManager
 public:
     TestMemoryManager() : cel::MemoryManager() {}
 
-    void* AllocUVWriteBuffer(size_t bufferStructSize)
+    void* AllocUVWriteBuffer(size_t bufferStructSize) override
     {
         return malloc(bufferStructSize);
     }
 
-    void* AllocUVReadBuffer(size_t suggestedSize)
+    void FreeUVWriteBuffer(cel::write_req_t* buffer) override
+    {
+        free(buffer);
+    }
+
+    void* AllocUVReadBuffer(size_t suggestedSize) override
     {
         return malloc(suggestedSize);
     }
 
-    void* AllocUVClient(size_t bufferStructSize)
+    void FreeUVReadBuffer(char* buffer) override
+    {
+        free(buffer);
+    }
+
+    void* AllocUVClient(size_t bufferStructSize) override
     {
         return malloc(bufferStructSize);
     }
