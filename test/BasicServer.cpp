@@ -8,15 +8,15 @@
 #include "Message.h"
 #include "Server.h"
 
-class SimpleMessage;
-static void DestroyMessage(SimpleMessage* msg);
-static SimpleMessage* MakeMessage();
-
 class SimpleMessage : public cel::Message
 {
 public:
     SimpleMessage() : cel::Message(), m_buffer(nullptr), m_bufferSize(0) {}
-    ~SimpleMessage() {}
+    ~SimpleMessage()
+    {
+        if(m_buffer)
+            free(m_buffer);
+    }
 
 public:
     void CopyBuffer(const char* other, size_t len)
@@ -43,35 +43,19 @@ public:
 
     void Destroy() override
     {
-        if(m_buffer)
-            free(m_buffer);
-        DestroyMessage(this);
+        delete this;
+    }
+
+    static SimpleMessage* MakeMessage()
+    {
+        SimpleMessage* newMsg = new SimpleMessage();
+        return newMsg;
     }
 
 private:
     char* m_buffer;
     unsigned int m_bufferSize;
 };
-
-static std::vector<SimpleMessage*> s_messages;
-
-static void DestroyMessage(SimpleMessage* msg)
-{
-    auto it = std::find(s_messages.begin(), s_messages.end(), msg);
-    if(it == s_messages.end()) {
-        cel::LogErr(cel::LogLevel::Normal, "Failed to destroy message %p (was not in list).\n", msg);
-        return;
-    }
-    s_messages.erase(it);
-    delete msg;
-}
-
-static SimpleMessage* MakeMessage()
-{
-    SimpleMessage* newMsg = new SimpleMessage();
-    s_messages.push_back(newMsg);
-    return newMsg;
-}
 
 class BasicServer : public cel::Server
 {
@@ -83,7 +67,7 @@ public:
         cel::LogOut(cel::LogLevel::Debug, "Client connected: %s:%d\n", client.GetIp(), client.GetPort());
 
         constexpr char welcomeMsg[] = "Welcome to the BasicServer!\n";
-        SimpleMessage* msg = MakeMessage();
+        SimpleMessage* msg = SimpleMessage::MakeMessage();
         msg->CopyBuffer(welcomeMsg, sizeof(welcomeMsg));
         client.SendMessage(*msg);
     }
@@ -97,7 +81,7 @@ public:
     {
         cel::LogOut(cel::LogLevel::Debug, "Incoming message from %s:%d...\n", client.GetIp(), client.GetPort());
 
-        SimpleMessage* msg = MakeMessage();
+        SimpleMessage* msg = SimpleMessage::MakeMessage();
         msg->CopyBuffer(buf, bufSize);
         cel::LogOut(cel::LogLevel::Debug, "Echo: %s\n", msg->GetBuffer());
         client.SendMessage(*msg);
