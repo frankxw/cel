@@ -1,50 +1,39 @@
 #include <stdlib.h>
 #include "App.h"
 #include "Exceptions.h"
-#include "Idler.h"
 #include "Logging.h"
 #include "Server.h"
 
 using namespace cel;
 
-App::App()
-    : m_initialized(false)
-    , m_running(false)
-    , m_loop(nullptr)
-    , m_server(nullptr)
-    , m_idler(nullptr)
-{
+static void idlerHook(uv_idle_t* handle);
 
+App::App()
+    : m_running(false)
+    , m_server(nullptr)
+{
+    m_loop = uv_default_loop();
 }
 
 App::~App()
 {
+    m_uvIdler.data = nullptr;
+
     if(m_loop) {
         uv_loop_close(m_loop);
         m_loop = nullptr;
     }
 }
 
-void App::Initialize(Server* server, Idler* idler)
-{
-    CEL_ASSERT(!m_initialized, "Trying to initialize app again.\n");
-
-    m_initialized = true;
-    m_loop = uv_default_loop();
-
-    m_server = server;
-    m_idler = idler;
-}
-
 int App::Run()
 {
-    CEL_ASSERT(m_initialized, "Trying to run app without initializing it.\n");
     CEL_ASSERT(!m_running, "App is already running, cannot run again.\n");
 
     m_running = true;
 
-    if(m_idler) {
-        m_idler->Start(m_loop);
+    if(m_idlerTickCallback) {
+        uv_idle_init(m_loop, &m_uvIdler);
+        uv_idle_start(&m_uvIdler, idlerHook);
     }
 
     if(m_server) {
@@ -61,6 +50,12 @@ void App::Quit()
     m_running = false;
 }
 
+void App::SetServer(Server* server)
+{
+    CEL_ASSERT(!m_running, "Trying to call SetServer when the app is already running.\n");
+    m_server = server;
+}
+
 int App::SetTimeout(uint64_t timeout, TimerCallback callback)
 {
     return m_timeKeeper.SetTimeout(timeout, callback);
@@ -74,4 +69,22 @@ int App::SetInterval(uint64_t timeout, uint64_t repeat, TimerCallback callback)
 void App::CancelTimer(int timerId)
 {
     m_timeKeeper.CancelTimer(timerId);
+}
+
+void App::OnIdlerTick(IdlerTickCallback callback)
+{
+    CEL_CHECK(!m_running, return;, LogLevel::Normal, "Trying to call OnIdlerTick when the app is already running.\n");
+    m_idlerTickCallback = callback;
+}
+
+void App::HandleIdlerTick()
+{
+    CEL_CHECK(m_idlerTickCallback, return;, LogLevel::Normal, "HandleIdlerTick: missing idler tick callback.\n");
+    m_idlerTickCallback();
+}
+
+static void idlerHook(uv_idle_t* handle)
+{
+    App& app = App::GetInstance();
+    app.HandleIdlerTick();
 }

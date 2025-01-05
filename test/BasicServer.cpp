@@ -2,7 +2,6 @@
 #include <vector>
 #include "App.h"
 #include "Exceptions.h"
-#include "Idler.h"
 #include "Logger.h"
 #include "Memory.h"
 #include "Message.h"
@@ -98,18 +97,6 @@ public:
     }
 };
 
-class Cruncher : public cel::Idler
-{
-public:
-    void Execute() override
-    {
-        static int a = 0;
-        if(a++ < 300) {
-            printf("Idle :) %d\n", a);
-        }
-    }
-};
-
 class TestLogger : public cel::Logger
 {
 public:
@@ -168,9 +155,14 @@ int main()
     cel::App& app = cel::App::GetInstance();
 
     BasicServer server(8070);
-    Cruncher crunch;
+    app.SetServer(&server);
 
-    app.Initialize(&server, &crunch);
+    int testCounter = 0;
+    app.OnIdlerTick([&testCounter]() {
+        if(testCounter++ < 300) {
+            cel::LogOut(cel::LogLevel::Normal, "Idle tick count: %d\n", testCounter);
+        }
+    });
 
     app.SetTimeout(3'000, [&server]() {
         server.PrintTestMsg();

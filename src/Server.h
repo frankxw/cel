@@ -36,6 +36,7 @@ namespace cel
         virtual void ClientDisconnected(Client& client) {};
         virtual void ClientMessage(Client& client, const char* buf, size_t bufSize) {};
 
+    public:
         void HandleNewUVStreamConnection(uv_stream_t* server, int status);
         void HandleUVStreamRead(uv_stream_t* uvClient, ssize_t nread, const uv_buf_t* buf);
         void AllocUVReadBuffer(uv_handle_t* handle, size_t suggestedSize, uv_buf_t* buf);
